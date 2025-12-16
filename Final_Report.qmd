@@ -1,0 +1,350 @@
+---
+title: "Predictive Modeling for Stroke Risk "
+subtitle: "Handling data imbalance"
+author: "Shree Krishna Man Sing Basnet  (Advisor: Dr. Cohen)"
+date: 12/15/2025
+bibliography: references.bib 
+format: 
+  html:
+    toc: true
+    theme: cosmo
+    code-fold: show
+    self-contained: true
+execute:
+  warning: false
+  message: false
+---
+
+
+
+## Introduction
+
+
+Stroke can be considered a major challenge in global healthcare, being a major cause of death and permanent disability globally [@WHO2025]. Due to the sudden onset and permanent nature of neurological damage resulting from a stroke, the model of medical treatment has become increasingly focused on prevention and early assessment of risk. Early assessment of risk is a key step in being able to make lifestyle modifications before a cerebrovascular accident strikes; therefore, developing accurate models of risk prediction has become a major priority in healthcare
+
+The best standard for binary categorization of medical outcomes is Logistic Regression (LR) [@sperandei2014understanding].  LR provides a clear benefit: interpretability, by modeling the likelihood of a disease state as a function of predictor variables.  In contrast to "black-box" algorithms, LR offers measurable odds ratios that enable researchers to determine not only who is at risk but also how particular clinical and demographic factors affect that risk.  Its usefulness in a variety of fields, from sophisticated healthcare resource allocation and safety analysis [@chen2024binary] to pediatric health determinants [@asmare2024determinants], has been solidified by this openness.
+
+However, data tends to be described by a set of complex non-linear interactions and a large class imbalance problem with the number of stroke cases greatly outnumbered by the number of control patients. Conventional linear models may even fail to describe this complexity effectively. To this end, the use of ensemble machine learning methods, namely the Random Forest algorithm, provides a viable non-linear alternative that does not impose strong structural priors on the problem even in high-dimensional feature space. Moreover, the use of resampling methods may be needed to counter the class imbalance problem to prevent the network from leaning towards the majority class.
+
+This effort benchmarks various predicting techniques using a publicly accessible stroke dataset that includes important clinical, behavioral, and demographic markers.  We examine the effectiveness of a Random Forest classifier combined with resampling techniques and establish Logistic Regression as a highly interpretable baseline model.  We seek to identify the best trade-off between predictive accuracy and model interpretability in the context of stroke risk assessment by comparing these various approaches.
+
+
+## Methods
+
+This section outlines our data, how we prepared it, and the modeling framework we used to compare different classifiers.
+
+For assessing predictive factors involving stroke, we implemented a comparative framework involving supervised learning. This analysis helps to build a parametric baseline employing Logistic Regression for higher explanative abilities, followed by a non-parametric ensemble method using Random Forest to understand nonlinear complexities, if any. Furthermore, we also addressed imbalance issues generally associated with disease modeling using resampling techniques for correcting biases.
+
+To evaluate the predictive factors associated with stroke, we employed a comparative supervised learning framework. The analysis establishes a parametric baseline using Logistic Regression to maximize interpretability, followed by a non-parametric ensemble approach using Random Forest to capture potential non-linear complexities. Additionally, to mitigate the bias inherent in imbalanced disease modeling, we incorporated synthetic resampling techniques during the training phase.
+
+### Logistic Regression Framework
+
+We utilized binary Logistic Regression (LR) as our baseline classifier. LR models the probability $P(Y=1)$ of the binary outcome (Stroke) as a function of the predictor variables $X$. The relationship is defined by the log-odds (logit) function:
+
+$$
+\ln \left( \frac{P(Y=1|X)}{1 - P(Y=1|X)} \right) = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + \dots + \beta_k X_k
+$$
+
+Where:
+
+* $P(Y=1|X)$ is the conditional probability of stroke given predictors $X$.
+* $\beta_0$ is the intercept.
+* $\beta_k$ represents the coefficient for the $k$-th predictor.
+
+The coefficients were estimated using Maximum Likelihood Estimation (MLE). This method is particularly advantageous for clinical risk profiling as the exponentiated coefficients ($e^{\beta}$) provide Odds Ratios (OR), offering a direct interpretation of how a unit change in a predictor influences the odds of a stroke event.
+
+### Random Forest Classifier
+
+To address potential non-linearities and high-dimensional interactions that linear models may fail to capture, we implemented a Random Forest (RF) classifier. Random Forest is an ensemble learning method that constructs a multitude of decision trees during training and outputs the mode of the classes (classification) of the individual trees.
+
+Mathematically, the Random Forest aggregates the predictions of $B$ individual trees $\{h_1(x), h_2(x), \dots, h_B(x)\}$. The final class prediction $\hat{Y}$ for an input vector $x$ is determined by majority voting:
+
+$$
+\hat{Y} = \text{mode} \{ h_b(x) \}_{b=1}^{B}
+$$
+
+We employed **Bootstrap Aggregating (Bagging)**, where each tree is trained on a random subset of the data sampled with replacement. Furthermore, at each split in the tree, only a random subset of features is considered. This randomness decorrelates the trees, reducing the variance of the model and preventing overfitting compared to single decision trees.
+
+### Handling Class Imbalance: SMOTE
+
+Medical datasets frequently exhibit severe class imbalance, where the minority class (positive stroke cases) is significantly underrepresented. Standard classifiers trained on such data often bias toward the majority class to maximize overall accuracy, resulting in poor sensitivity.
+
+To rectify this, we applied the **Synthetic Minority Over-sampling Technique (SMOTE)**. Unlike simple random over-sampling, which duplicates existing records, SMOTE generates new synthetic examples by interpolating between existing minority class samples.
+
+For a given minority sample $x_i$, SMOTE selects a nearest neighbor $x_{zi}$ and creates a new synthetic sample $x_{new}$ along the line segment joining them:
+
+$$
+x_{new} = x_i + \lambda \times (x_{zi} - x_i)
+$$
+
+Where $\lambda$ is a random number between 0 and 1. This expansion of the decision boundary allows the classifier to generalize better to the minority class without overfitting to specific existing points.
+
+### Model Evaluation Metrics
+
+Given the imbalance in the target variable, accuracy alone is an insufficient metric. We evaluated model performance using a confusion matrix, specifically focusing on:
+
+* **Sensitivity (Recall):** The proportion of actual stroke cases correctly identified ($\frac{TP}{TP + FN}$).
+* **Specificity:** The proportion of non-stroke cases correctly identified ($\frac{TN}{TN + FP}$).
+* **Area Under the ROC Curve (AUC-ROC):** To measure the model's ability to discriminate between classes across all classification thresholds.
+
+
+## Analysis
+
+### Data Preparation and Variables
+
+We started with a dataset of **5,110 observations** and 11 predictors commonly linked to stroke risk. We filtered out missing data and inconsistent entries—such as "Unknown," "N/A," or rare labels like "Other"—which left us with a final cleaned dataset.
+
+The key predictors used in our analysis are listed below:
+
+| Variable            | Type         | Description                    |
+|:--------------------|:-------------|:-------------------------------|
+| **age** | Numeric      | Age of the individual (years)  |
+| **gender** | Categorical  | Biological sex (Male/Female)   |
+| **hypertension** | Binary (0/1) | Prior hypertension diagnosis   |
+| **heart_disease** | Binary (0/1) | Presence of heart disease      |
+| **ever_married** | Binary       | Marital status                 |
+| **work_type** | Categorical  | Employment category            |
+| **Residence_type** | Binary       | Urban vs. Rural                |
+| **smoking_status** | Categorical  | Never / Former / Smokes        |
+| **bmi** | Numeric      | Body Mass Index                |
+| **avg_glucose_level**| Numeric     | Average glucose level          |
+| **stroke** | Binary       | Outcome (0=No, 1=Yes)          |
+
+### Addressing Class Imbalance
+Our dataset is highly unbalanced:
+* **Yes (Stroke):** ~5%
+* **No (No Stroke):** ~95%
+
+To address the severe deficiency in stroke detection (Sensitivity $\approx 2\%$) caused by this imbalance, we implemented **SMOTE (Synthetic Minority Over-sampling Technique)**. This method creates synthetic examples of stroke cases during the training phase to improve the model's ability to learn the rare event.
+
+### Data Loading and Cleaning
+We implemented the data cleaning steps described in the methodology, including converting BMI to numeric and removing "Unknown" categories to ensure data quality.
+
+```{r}
+#| label: setup-and-load
+#| message: false
+#| warning: false
+
+# Loading packages
+library(tidyverse)
+library(caret)
+library(pROC)
+library(rpart)
+library(randomForest)
+library(themis) 
+
+# Load Data
+if(file.exists("healthcare-dataset-stroke-data.csv")) {
+  strokeclean <- read.csv("healthcare-dataset-stroke-data.csv")
+} else {
+  strokeclean <- read.csv("stroke.csv")
+}
+
+# --- Data Cleaning Steps per Methodology ---
+# 1. Convert BMI to Numeric (Fixes "new levels" error)
+strokeclean$bmi <- as.numeric(strokeclean$bmi)
+
+# 2. Remove NAs
+strokeclean <- na.omit(strokeclean)
+
+# 3. Filter out "Unknown" smoking status and "Other" gender to match report text
+strokeclean <- strokeclean %>% 
+  filter(smoking_status != "Unknown", gender != "Other")
+
+# 4. Factor Conversion
+strokeclean$stroke <- factor(strokeclean$stroke, levels = c(0, 1), labels = c("No", "Yes"))
+strokeclean$gender <- as.factor(strokeclean$gender)
+strokeclean$hypertension <- as.factor(strokeclean$hypertension)
+strokeclean$heart_disease <- as.factor(strokeclean$heart_disease)
+strokeclean$ever_married <- as.factor(strokeclean$ever_married)
+strokeclean$work_type <- as.factor(strokeclean$work_type)
+strokeclean$Residence_type <- as.factor(strokeclean$Residence_type)
+strokeclean$smoking_status <- as.factor(strokeclean$smoking_status)
+
+# Split Data (70% Train, 30% Test)
+# Stratified sampling ensures consistent stroke ratios
+set.seed(123)
+index <- createDataPartition(strokeclean$stroke, p = 0.70, list = FALSE)
+train_data <- strokeclean[index, ]
+test_data  <- strokeclean[-index, ]
+
+```
+
+### Visualizing the Imbalance
+The plot below visually confirms the scarcity of stroke cases, validating the need for the SMOTE resampling strategy.
+
+```{r}
+#| label: visual-imbalance
+#| fig.height: 4
+
+ggplot(train_data, aes(x = stroke, fill = stroke)) +
+  geom_bar() +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.5) +
+  labs(title = "Class Imbalance in Training Data", 
+       subtitle = "Stroke cases (Yes) represent a tiny fraction of the data",
+       x = "Stroke Occurrence", y = "Count") +
+  theme_bw() +
+  scale_fill_manual(values = c("gray70", "darkred"))
+```
+
+Summary:
+
+In order to comprehend the structural issues involved with the given data, the distribution of the target value was analyzed. It can be viewed from Figure 1 that there is a highly unbalanced class distribution. The negative class (No Stroke) has a large number of instances at 2,272, while the positive class (Stroke) comprises only 126 instances.
+
+This represents a ‘needle in a haystack problem.’ The model would actually reach a level of 95% accuracy by just predicting 'No Stroke' for all patients, without the need for any complex model, but would not work at all for the primary task of identifying the vulnerable subset. This clear imbalance gives us the practical justification for applying resampling methods (SMOTE) to effectively create class parity in the training set.
+
+Results
+Model Training
+We trained three models using stratified Cross-Validation (CV) to prevent overfitting and ensure the model generalizes well.
+
+1- Logistic Regression (Baseline): The standard statistical approach.
+
+2- Random Forest (Standard): A powerful ensemble method.
+
+3- Random Forest + SMOTE: The ensemble method trained on balanced data.
+
+```{r}
+#| label: model-training
+#| results: hide
+
+# 1. Control Settings (3-fold )
+ctrl_none <- trainControl(method = "cv", number = 3, classProbs = TRUE, summaryFunction = twoClassSummary)
+ctrl_smote <- trainControl(method = "cv", number = 3, classProbs = TRUE, summaryFunction = twoClassSummary, sampling = "smote")
+
+# 2. Train Models
+# Baseline LR
+model_lr <- train(stroke ~ ., data = train_data, method = "glm", metric = "ROC", trControl = ctrl_none)
+
+# Standard RF (Fast mode: ntree=50)
+model_rf <- train(stroke ~ ., data = train_data, method = "rf", metric = "ROC", trControl = ctrl_none, ntree = 50)
+
+# SMOTE RF (Fast mode: ntree=50)
+model_rf_smote <- train(stroke ~ ., data = train_data, method = "rf", metric = "ROC", trControl = ctrl_smote, ntree = 50)
+```
+
+### ROC Analysis and Performance
+
+To quantify the discriminative ability of our models, we generated Receiver Operating Characteristic (ROC) curves. The ROC curve plots the True Positive Rate (Sensitivity) against the False Positive Rate across various threshold settings.
+
+The goal was to determine if synthetic resampling (SMOTE) improved the model's ability to detect strokes compared to a standard Random Forest model.
+
+```{r}
+#| label: results-plot
+
+# Create ROC list
+roc_list <- list(
+  RF_Standard = roc(test_data$stroke, predict(model_rf, test_data, type = "prob")[, "Yes"], levels=c("No","Yes"), direction="<"),
+  RF_SMOTE    = roc(test_data$stroke, predict(model_rf_smote, test_data, type = "prob")[, "Yes"], levels=c("No","Yes"), direction="<")
+)
+
+# Plot Data
+roc_df_combined <- do.call(rbind, lapply(names(roc_list), function(m) {
+  r <- roc_list[[m]]
+  data.frame(model = m, specificity = rev(r$specificities), sensitivity = rev(r$sensitivities))
+}))
+
+ggplot(roc_df_combined, aes(x = 1 - specificity, y = sensitivity, color = model)) +
+  geom_line(size = 1.2) +
+  geom_abline(linetype = "dashed", color = "grey") +
+  labs(title = "Impact of SMOTE Resampling",
+       # UPDATED SUBTITLE: Reflects that Standard RF (Black) is actually higher/better
+       subtitle = "Standard RF (Black) outperforms SMOTE, indicating robustness to imbalance",
+       x = "False Positive Rate", y = "Sensitivity") +
+  theme_minimal() +
+  # Correct Color Mapping: SMOTE = Green, Standard = Black
+  scale_color_manual(values = c("RF_SMOTE" = "#009E73", 
+                                "RF_Standard" = "black"))
+```
+
+Summary:
+
+Contrary to our initial hypothesis, the Standard Random Forest (Black line) outperformed the SMOTE-enhanced model. As observed in the figure, the Standard model maintains a higher sensitivity across most decision thresholds (the black line stays closer to the top-left corner than the green line).
+
+This suggests that for this specific dataset, the synthetic examples generated by SMOTE may have introduced noise rather than clarifying the decision boundary. The Standard Random Forest proved sufficiently robust to handle the class imbalance without the need for synthetic oversampling.
+
+### Clinical Risk Factors (Odds Ratios)
+
+Random Forest has a strong predictive value, but it is not directly interpretable in terms of biological risk factors. In order to find the statistically relevant factors influencing stroke risk, we extracted Odds Ratios (OR) using the Logistic Regression baseline.The top independent predictors are arranged by statistical significance ($p < 0.05$) in the table below.
+
+```{r}
+#| label: odds-ratios
+
+# Extract coefficients
+lr_coef <- summary(model_lr$finalModel)$coefficients
+
+# Create Data Frame
+or_df <- data.frame(
+  Predictor = rownames(lr_coef),
+  OR = exp(lr_coef[, 1]),
+  p_value = lr_coef[, 4]
+) %>%
+  # Remove Intercept and Unstable variables (p-value > 0.05 usually indicates non-significance)
+  filter(Predictor != "(Intercept)", p_value < 0.05) %>%
+  # Sort by Significance (Smallest p-value is most important)
+  arrange(p_value)
+
+
+knitr::kable(head(or_df, 5), caption = "Top Significant Independent Predictors of Stroke Risk")
+```
+
+Summary:
+
+Interpretation of Findings:
+
+- Age: As expected, age turned out to be the most prominent risk factor ($p < 0.001$). 
+- The Odds Ratio of 1.07 makes clear that with each advancing year of life, there is an accompanying 7% probability of stroke, as reported in previous literature on cardiovascular disease.
+- Hypertension: Patients having hypertension also displayed higher risks compared to normotensive people (OR $\approx$ 1.96).
+- Average Glucose Level: Hyperglycemia also turned out to be a statistical predictor ($p \approx$ 0.004), as expected from previous literature associated with metabolic syndrome.
+
+Age, hypertension, and hyperglycemia together signified that this study verifies the importance of its data points and makes clear that this machine learning model learns biologically important patterns instead of spurious information.
+
+```{r}
+#| label: save-outputs
+#| include: false
+
+# 1. Create the outputs folder (if it doesn't exist)
+dir.create("outputs", showWarnings = FALSE)
+
+# 2. Save the ROC Plot (The most important image)
+# We recreate the plot object to save it
+p_roc <- ggplot(roc_df_combined, aes(x = 1 - specificity, y = sensitivity, color = model)) +
+  geom_line(size = 1.2) +
+  geom_abline(linetype = "dashed", color = "grey") +
+  labs(title = "ROC Curve Comparison") +
+  theme_minimal() +
+  scale_color_manual(values = c("RF_SMOTE" = "#009E73", "RF_Standard" = "black"))
+
+ggsave("outputs/roc_plot.png", plot = p_roc, width = 6, height = 4)
+
+# 3. Save the Class Imbalance Plot
+p_imbalance <- ggplot(train_data, aes(x = stroke, fill = stroke)) +
+  geom_bar() +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.5) +
+  labs(title = "Class Imbalance") +
+  theme_bw()
+
+ggsave("outputs/imbalance_plot.png", plot = p_imbalance, width = 6, height = 4)
+
+# 4. Save the Significant Predictors Table to CSV
+write.csv(or_df, "outputs/significant_predictors.csv", row.names = FALSE)
+```
+
+
+## Conclusion
+
+The primary challenge in this study was the severe class imbalance in our data. Because stroke cases represented only 5% of the total observations, our main concern was that a standard machine learning model would fail to detect these rare events, favoring the majority class of healthy patients instead.
+
+To address this, we implemented SMOTE (Synthetic Minority Over-sampling Technique). Our hypothesis was simple: by generating synthetic examples of stroke cases, we could "teach" the model to identify at-risk patients more effectively.
+
+However, the results contradicted our hypothesis. The Standard Random Forest model, trained on the original unbalanced data, consistently outperformed the model trained with SMOTE. The synthetic data, rather than clarifying the decision boundaries, appeared to introduce noise that confused the classifier.
+
+This leads to two significant findings:
+
+- Data Quality over Quantity: The natural patterns in the clinical data—driven by strong predictors like Age, Hypertension, and Glucose—were robust enough for the Random Forest to detect without artificial enhancement.
+
+- Complexity is Not Always Better: While techniques like SMOTE are standard for imbalance, this study demonstrates that they are not a universal fix. In this specific case, preserving the integrity of the original data proved more effective than artificially balancing it.
+
+Ultimately, this analysis successfully established a predictive baseline. Future work should pivot from data resampling to cost-sensitive learning, where the model is mathematically penalized for missing stroke cases, ensuring high sensitivity without altering the underlying data structure.
+
+
+
